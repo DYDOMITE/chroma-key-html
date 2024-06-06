@@ -1,0 +1,14 @@
+{
+  "name": "wasm-chroma-key",
+  "version": "0.1.0",
+  "files": [
+    "wasm_chroma_key_bg.wasm",
+    "wasm_chroma_key.js",
+    "wasm_chroma_key.d.ts"
+  ],
+  "module": "wasm_chroma_key.js",
+  "types": "wasm_chroma_key.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
