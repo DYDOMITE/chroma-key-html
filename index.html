@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chroma Key Example with Color Picker and Slider</title>
+</head>
+<body>
+  <input type="color" id="colorPicker" value="#00ff00" style="position: absolute; top: 10px; left: 10px;">
+  <input type="range" id="radiusSlider" min="0" max="255" value="50" style="position: absolute; top: 40px; left: 10px;">
+  <canvas id="canvas" width="640" height="480" style="position: absolute; top: 80px; left: 10px;"></canvas>
+
+  <script>
+    let video = document.createElement('video');
+    video.src = 'greenscreen.mp4';
+    video.crossOrigin = 'anonymous'; // Handle cross-origin requests if necessary
+    video.loop = true;
+    video.muted = true; // Mute the video to allow autoplay
+    video.play();
+
+    let canvas = document.getElementById('canvas');
+    let ctx = canvas.getContext('2d');
+
+    let colorPicker = document.getElementById('colorPicker');
+    let radiusSlider = document.getElementById('radiusSlider');
+    let blinkBlue = false;
+
+    setInterval(() => {
+      blinkBlue = !blinkBlue;
+    }, 1000);
+
+    function hexToRgb(hex) {
+      let bigint = parseInt(hex.slice(1), 16);
+      return {
+        r: (bigint >> 16) & 255,
+        g: (bigint >> 8) & 255,
+        b: bigint & 255
+      };
+    }
+
+    function getDistance(color1, color2) {
+      let rDiff = color1.r - color2.r;
+      let gDiff = color1.g - color2.g;
+      let bDiff = color1.b - color2.b;
+      return Math.sqrt(rDiff * rDiff + gDiff * gDiff + bDiff * bDiff);
+    }
+
+    function draw() {
+      if (video.readyState === video.HAVE_ENOUGH_DATA) {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        let frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        let length = frame.data.length;
+        let baseColor = hexToRgb(colorPicker.value);
+        let radius = parseInt(radiusSlider.value);
+        let maxDistance = radius * 1.5; // extend the radius for anti-aliasing
+
+        for (let i = 0; i < length; i += 4) {
+          let r = frame.data[i];
+          let g = frame.data[i + 1];
+          let b = frame.data[i + 2];
+
+          let distance = getDistance({r, g, b}, baseColor);
+
+          if (distance < radius) { // within radius
+            if (blinkBlue) {
+              frame.data[i] = 0;
+              frame.data[i + 1] = 0;
+              frame.data[i + 2] = 255;
+            } else {
+              frame.data[i + 3] = 0; // make pixel transparent
+            }
+          } else if (distance < maxDistance) { // within anti-aliasing range
+            let alphaFactor = (maxDistance - distance) / (maxDistance - radius);
+            frame.data[i + 3] = Math.round(frame.data[i + 3] * alphaFactor);
+          }
+        }
+
+        ctx.putImageData(frame, 0, 0);
+      }
+      requestAnimationFrame(draw);
+    }
+
+    video.addEventListener('play', draw);
+  </script>
+</body>
+</html>
